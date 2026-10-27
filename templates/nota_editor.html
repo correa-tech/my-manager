@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Editar anotação{% endblock %}
+{% block content %}
+<div class="row-between"><h1>Editar anotação</h1><a class="btn ghost" href="{{ url_for('notas') }}">Voltar</a></div>
+<div class="editor-wrap"><section class="editor-main card"><input id="title" value="{{ note.title }}" placeholder="Título"><div class="editor-toolbar" role="toolbar"><button type="button" onclick="format('bold')"><strong>B</strong></button><button type="button" onclick="format('italic')"><em>I</em></button><button type="button" onclick="format('insertUnorderedList')">Lista</button><button type="button" onclick="format('insertOrderedList')">1. Lista</button><button type="button" onclick="format('formatBlock','h2')">Título</button><button type="button" onclick="format('formatBlock','p')">Texto</button></div><div id="content" class="rich-editor" contenteditable="true" data-placeholder="Escreva sua anotação...">{{ note.content|safe }}</div><div class="row-between"><span id="saved" class="muted">Salvamento automático</span><button class="btn" type="button" onclick="saveNote()">Salvar agora</button></div></section><aside class="editor-side card"><label><input id="favorite" type="checkbox" {% if note.favorite %}checked{% endif %}> Favorita</label><br><label><input id="review" type="checkbox" {% if note.review %}checked{% endif %}> Revisar depois</label><h3>Etiquetas</h3><input id="tags" value="{{ tags|join(', ') }}" placeholder="trabalho, ideia"><h3>Transformar em tarefa</h3><form method="post" action="{{ url_for('note_to_task', note_id=note.id) }}"><select name="area_id" required><option value="">Área</option>{% for area in areas %}<option value="{{ area.id }}">{{ area.name }}</option>{% endfor %}</select><select name="priority"><option value="medium">Média</option><option value="high">Alta</option><option value="low">Baixa</option></select><input type="date" name="due_date"><button class="btn">Criar tarefa</button></form><h3>Transformar em nova área</h3><form method="post" action="{{ url_for('note_to_area', note_id=note.id) }}"><input name="name" value="{{ note.title }}" placeholder="Nome da área"><input name="description" value="{{ note.content|striptags|truncate(300) }}" placeholder="Descrição"><button class="btn ghost">Criar área</button></form><form method="post" action="{{ url_for('note_delete', note_id=note.id) }}" style="margin-top:12px"><button class="btn danger">Excluir anotação</button></form></aside></div>
+<script>
+function format(command, value = null) { document.execCommand(command, false, value); document.getElementById('content').focus(); }
+async function saveNote() {
+  const response = await fetch('{{ url_for("note_save", note_id=note.id) }}', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title: document.getElementById('title').value, content: document.getElementById('content').innerHTML, favorite: document.getElementById('favorite').checked, review: document.getElementById('review').checked, tags: document.getElementById('tags').value.split(',').map(tag => tag.trim()).filter(Boolean)})});
+  const data = await response.json();
+  document.getElementById('saved').textContent = data.ok ? 'Salvo às ' + data.saved_at : 'Falha ao salvar';
+}
+let saveTimer;
+document.getElementById('content').addEventListener('input', () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveNote, 900); });
+document.getElementById('title').addEventListener('input', () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveNote, 900); });
+</script>
+{% endblock %}

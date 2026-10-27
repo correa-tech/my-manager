@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Resumo | Gestão pessoal{% endblock %}
+{% block content %}
+<h1>Resumo</h1>
+<div class="stats">
+  <div class="stat"><span>Pendentes</span><strong>{{ stats.pending }}</strong></div>
+  <div class="stat"><span>Concluídas</span><strong>{{ stats.done }}</strong></div>
+  <div class="stat"><span>Atrasadas</span><strong class="danger">{{ stats.overdue }}</strong></div>
+</div>
+<div class="card">
+  <div class="row-between"><h2>Prioridades</h2><a class="btn ghost" href="{{ url_for('todo_index') }}">Ver áreas</a></div>
+  {% if priority_tasks %}<ul class="task-list">{% for task in priority_tasks %}<li><span>!</span><div class="task-body"><div class="task-title"><a href="{{ url_for('area_detail', area_id=task.area_id) }}">{{ task.title }}</a></div><div class="task-meta">{{ task.area_name }}{% if task.due_date %} · {{ task.due_date }}{% endif %}</div></div></li>{% endfor %}</ul>{% else %}<div class="empty-hero"><h2>Nenhuma prioridade</h2><p class="muted">Tudo tranquilo por enquanto.</p></div>{% endif %}
+</div>
+<div class="card"><h2>Tarefas de hoje</h2>{% if tasks_today %}<ul class="list">{% for task in tasks_today %}<li><strong>{{ task.title }}</strong><small class="muted">{{ task.area_name }}{% if task.due_time %} · {{ task.due_time }}{% endif %}</small></li>{% endfor %}</ul>{% else %}<p class="muted">Nenhuma tarefa para hoje.</p>{% endif %}</div>
+<div class="card"><h2>Próximos compromissos</h2>{% if events_next %}<ul class="list">{% for event in events_next %}<li><strong>{{ event.title }}</strong><small class="muted">{{ event.date }}{% if event.start_time %} · {{ event.start_time }}{% endif %}</small></li>{% endfor %}</ul>{% else %}<p class="muted">Nenhum compromisso próximo.</p>{% endif %}</div>
+<div class="card"><div class="row-between"><h2>Anotações para revisão</h2><a class="btn ghost" href="{{ url_for('notas') }}">Ver anotações</a></div>{% if notes_review %}<ul class="list">{% for note in notes_review %}<li><a href="{{ url_for('note_editor', note_id=note.id) }}">{{ note.title or 'Sem título' }}</a><small class="muted">marcada para revisão</small></li>{% endfor %}</ul>{% else %}<p class="muted">Nenhuma anotação marcada para revisão.</p>{% endif %}</div>
+<div class="card"><h2>Acesso rápido</h2><div class="filters"><a class="btn" href="{{ url_for('todo_index') }}">Criar área</a><a class="btn ghost" href="{{ url_for('agenda') }}">Novo compromisso</a><form method="post" action="{{ url_for('note_create') }}"><button class="btn ghost">Nova anotação</button></form></div></div>
+{% endblock %}

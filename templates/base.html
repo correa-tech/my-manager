@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Gestão pessoal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">Gestão pessoal</div>
+    <nav>
+      <a href="{{ url_for('resumo') }}">Resumo</a>
+      <a href="{{ url_for('todo_index') }}">Áreas e tarefas</a>
+      <a href="{{ url_for('agenda') }}">Agenda</a>
+      <a href="{{ url_for('notas') }}">Anotações</a>
+    </nav>
+    <button class="theme-toggle" type="button" onclick="toggleTheme()" title="Alternar tema">◐</button>
+  </aside>
+  <main class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}<div class="flashes">{% for category, message in messages %}<div class="flash flash-{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', html.dataset.theme);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
+  </script>
+</body>
+</html>
