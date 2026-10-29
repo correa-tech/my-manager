@@ -8,7 +8,8 @@ from db import get_db, init_app as db_init, init_db
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "local-dev-only-change-me"
 db_init(app)
-init_db()
+with app.app_context():
+    init_db()
 
 def today_str():
     return date.today().isoformat()
@@ -85,9 +86,9 @@ def todo_index():
     areas = db.execute("""
       SELECT a.*,
              (SELECT COUNT(*) FROM tasks WHERE area_id=a.id) total,
-             (SELECT COUNT(*) FROM tasks WHERE area_id=a.id AND status='done') done,
+               (SELECT COUNT(*) FROM tasks WHERE area_id=a.id AND (stage='concluido' OR status='done')) done,
              (SELECT COUNT(*) FROM tasks WHERE area_id=a.id AND status='pending' AND due_date < ?) overdue
-        FROM areas a ORDER BY a.created_at
+           FROM areas a ORDER BY a.parent_id IS NOT NULL, a.created_at
     """, (today_str(),)).fetchall()
     return render_template("areas.html", areas=areas)
 
@@ -99,7 +100,11 @@ def area_create():
         flash("Informe um nome para a área.", "error")
         return redirect(url_for("todo_index"))
     db = get_db()
-    cur = db.execute("INSERT INTO areas(name, description) VALUES (?,?) RETURNING id", (name, desc))
+    parent_id = request.form.get("parent_id", type=int)
+    if parent_id and not db.execute("SELECT id FROM areas WHERE id=?", (parent_id,)).fetchone():
+        flash("A área-pai selecionada não existe.", "error")
+        return redirect(url_for("todo_index"))
+    cur = db.execute("INSERT INTO areas(name, description, parent_id) VALUES (?,?,?) RETURNING id", (name, desc, parent_id))
     area_id = cur.fetchone()["id"]
     db.commit()
     flash("Área criada.", "ok")
@@ -113,12 +118,15 @@ def area_detail(area_id):
 
     status = request.args.get("status", "all")
     priority = request.args.get("priority", "all")
+    stage = request.args.get("stage", "all")
     sort = request.args.get("sort", "created")
     q = request.args.get("q", "").strip()
 
     where = ["area_id = ?"]; params = [area_id]
-    if status in ("pending","done"):
+    if status in ("pending", "done"):
         where.append("status = ?"); params.append(status)
+    if stage in ("inicio", "fazendo", "bug", "concluido"):
+        where.append("stage = ?"); params.append(stage)
     if priority in ("low","medium","high"):
         where.append("priority = ?"); params.append(priority)
     if q:
@@ -134,11 +142,14 @@ def area_detail(area_id):
     tasks = db.execute(f"SELECT * FROM tasks WHERE {' AND '.join(where)} ORDER BY {order}", params).fetchall()
 
     total = db.execute("SELECT COUNT(*) c FROM tasks WHERE area_id=?", (area_id,)).fetchone()["c"]
-    done = db.execute("SELECT COUNT(*) c FROM tasks WHERE area_id=? AND status='done'", (area_id,)).fetchone()["c"]
+    done = db.execute("SELECT COUNT(*) c FROM tasks WHERE area_id=? AND (stage='concluido' OR status='done')", (area_id,)).fetchone()["c"]
+    children = db.execute("SELECT * FROM areas WHERE parent_id=? ORDER BY created_at", (area_id,)).fetchall()
+    parent = db.execute("SELECT id, name FROM areas WHERE id=?", (area["parent_id"],)).fetchone() if area["parent_id"] else None
 
     return render_template("area_detalhe.html", area=area, tasks=tasks,
         today=today_str(), total=total, done=done,
-        filters={"status": status, "priority": priority, "sort": sort, "q": q})
+        filters={"status": status, "stage": stage, "priority": priority, "sort": sort, "q": q},
+        children=children, parent=parent)
 
 @app.route("/areas/<int:area_id>/edit", methods=["POST"])
 def area_edit(area_id):
@@ -157,9 +168,11 @@ def area_edit(area_id):
 def area_delete(area_id):
     db = get_db()
     total = db.execute("SELECT COUNT(*) c FROM tasks WHERE area_id=?", (area_id,)).fetchone()["c"]
-    if total > 0 and request.form.get("confirm") != "yes":
-        flash(f"Esta área possui {total} tarefa(s). Confirme a exclusão.", "warn")
+    children = db.execute("SELECT COUNT(*) c FROM areas WHERE parent_id=?", (area_id,)).fetchone()["c"]
+    if (total > 0 or children > 0) and request.form.get("confirm") != "yes":
+        flash(f"Esta área possui {total} tarefa(s) e {children} subárea(s). Confirme a exclusão.", "warn")
         return redirect(url_for("area_detail", area_id=area_id))
+    db.execute("DELETE FROM areas WHERE parent_id=?", (area_id,))
     db.execute("DELETE FROM areas WHERE id=?", (area_id,))
     db.commit()
     flash("Área excluída.", "ok")
@@ -179,13 +192,18 @@ def task_create(area_id):
     if due_date and not parse_date(due_date):
         flash("A data da tarefa é inválida.", "error")
         return redirect(url_for("area_detail", area_id=area_id))
-    db.execute("""INSERT INTO tasks(area_id,title,description,priority,due_date,due_time)
-                  VALUES (?,?,?,?,?,?)""", (
+    stage = request.form.get("stage", "inicio")
+    if stage not in ("inicio", "fazendo", "bug", "concluido"):
+        stage = "inicio"
+    db.execute("""INSERT INTO tasks(area_id,title,description,priority,due_date,due_time,stage,status)
+                  VALUES (?,?,?,?,?,?,?,?)""", (
         area_id, title,
         request.form.get("description","").strip(),
         priority,
         due_date,
         request.form.get("due_time") or None,
+        stage,
+        "done" if stage == "concluido" else "pending",
     ))
     db.commit()
     flash("Tarefa criada.", "ok")
@@ -203,13 +221,18 @@ def task_edit(task_id):
     if due_date and not parse_date(due_date):
         flash("A data da tarefa é inválida.", "error")
         return redirect(url_for("area_detail", area_id=t["area_id"]))
-    db.execute("""UPDATE tasks SET title=?, description=?, priority=?, due_date=?, due_time=?
+    stage = request.form.get("stage", t["stage"] or "inicio")
+    if stage not in ("inicio", "fazendo", "bug", "concluido"):
+        stage = t["stage"] or "inicio"
+    db.execute("""UPDATE tasks SET title=?, description=?, priority=?, due_date=?, due_time=?, stage=?, status=?
                    WHERE id=?""", (
         request.form.get("title", t["title"]).strip() or t["title"],
         request.form.get("description","").strip(),
         priority,
         due_date,
         request.form.get("due_time") or None,
+        stage,
+        "done" if stage == "concluido" else "pending",
         task_id,
     ))
     db.commit()
@@ -220,10 +243,22 @@ def task_toggle(task_id):
     db = get_db()
     t = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not t: abort(404)
-    new = "done" if t["status"]=="pending" else "pending"
-    db.execute("UPDATE tasks SET status=? WHERE id=?", (new, task_id))
+    new_stage = "concluido" if (t["stage"] or "inicio") != "concluido" else "inicio"
+    db.execute("UPDATE tasks SET status=?, stage=? WHERE id=?", ("done" if new_stage == "concluido" else "pending", new_stage, task_id))
     db.commit()
     return redirect(request.referrer or url_for("area_detail", area_id=t["area_id"]))
+
+@app.route("/tasks/<int:task_id>/stage", methods=["POST"])
+def task_stage(task_id):
+    db = get_db()
+    task = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task: abort(404)
+    stage = request.form.get("stage", "inicio")
+    if stage not in ("inicio", "fazendo", "bug", "concluido"):
+        stage = "inicio"
+    db.execute("UPDATE tasks SET stage=?, status=? WHERE id=?", (stage, "done" if stage == "concluido" else "pending", task_id))
+    db.commit()
+    return redirect(request.referrer or url_for("area_detail", area_id=task["area_id"]))
 
 @app.route("/tasks/<int:task_id>/delete", methods=["POST"])
 def task_delete(task_id):

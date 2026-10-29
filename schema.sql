@@ -1,6 +1,7 @@
 
 CREATE TABLE IF NOT EXISTS areas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER REFERENCES areas(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','done')),
+  stage TEXT NOT NULL DEFAULT 'inicio' CHECK(stage IN ('inicio','fazendo','bug','concluido')),
   priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
   due_date TEXT,
   due_time TEXT,

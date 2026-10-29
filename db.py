@@ -58,6 +58,24 @@ def init_db():
         schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
         with sqlite3.connect(DB_PATH) as connection:
             connection.executescript(schema)
+    migrate_db()
+
+
+def migrate_db():
+    db = get_db()
+    if USE_POSTGRES:
+        db.execute("ALTER TABLE areas ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES areas(id) ON DELETE CASCADE")
+        db.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'inicio'")
+    else:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(areas)").fetchall()}
+        if "parent_id" not in columns:
+            db.execute("ALTER TABLE areas ADD COLUMN parent_id INTEGER")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(tasks)").fetchall()}
+        if "stage" not in columns:
+            db.execute("ALTER TABLE tasks ADD COLUMN stage TEXT NOT NULL DEFAULT 'inicio'")
+    db.execute("UPDATE tasks SET stage='concluido' WHERE status='done' AND (stage IS NULL OR stage='inicio')")
+    db.execute("UPDATE tasks SET stage='inicio' WHERE status='pending' AND (stage IS NULL OR stage='concluido')")
+    db.commit()
 
 def init_app(app):
     app.teardown_appcontext(close_db)
