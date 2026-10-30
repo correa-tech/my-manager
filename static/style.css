@@ -184,6 +184,44 @@ html[data-theme="dark"] .task-actions button:hover { background: rgba(255,255,25
 .editor-wrap { display: flex; gap: 16px; align-items: flex-start; }
 .editor-main { flex: 1; }
 .editor-side { width: 280px; }
+.workspace-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; }
+.area-sidebar { border-right: 1px solid var(--border); padding-right: 16px; }
+.area-sidebar-head, .workspace-title-row, .workspace-toolbar, .column-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.area-home, .area-link { display: block; padding: 7px 8px; border-radius: 5px; color: var(--muted); }
+.area-home { margin: 12px 0 6px; }
+.area-link { color: var(--text); }
+.area-link:hover, .area-link.active { background: var(--bg); text-decoration: none; }
+.area-link.active { color: var(--primary); font-weight: 600; }
+.area-link.child { padding-left: 20px; font-size: 13px; }
+.tree-mark { color: var(--muted); margin-right: 4px; }
+.icon-btn { border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+.workspace-breadcrumb { display: flex; gap: 8px; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.workspace-title-row { align-items: flex-start; margin-bottom: 18px; }
+.workspace-title-row h1 { margin-bottom: 5px; }
+.view-switch { display: flex; gap: 4px; align-items: center; }
+.view-btn, .text-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 7px 9px; }
+.view-btn.active, .text-btn:hover { color: var(--text); background: var(--bg); border-radius: 5px; }
+.workspace-toolbar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 10px 0; }
+.workspace-toolbar .filters { margin: 0; flex: 1; }
+.subarea-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.subarea-chip { border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; color: var(--text); background: var(--card); }
+.subarea-chip:hover { background: var(--bg); text-decoration: none; }
+.add-chip { cursor: pointer; color: var(--muted); }
+.column-head { margin-bottom: 10px; }
+.column-head h3 { margin: 0; color: var(--text); }
+.column-head span { color: var(--muted); font-size: 12px; }
+.task-grip { color: var(--muted); cursor: grab; letter-spacing: -3px; }
+.board-task.dragging { opacity: .45; }
+.board-column.drag-over { outline: 2px solid var(--primary); outline-offset: -2px; }
+.board-task-actions { display: flex; justify-content: flex-end; gap: 2px; }
+.quick-modal { border: 1px solid var(--border); border-radius: 8px; padding: 0; color: var(--text); background: var(--card); width: min(460px, calc(100vw - 24px)); }
+.quick-modal::backdrop { background: rgba(15, 23, 42, .35); }
+.quick-modal form { display: grid; gap: 12px; padding: 22px; }
+.quick-modal h2 { margin: 0; }
+.quick-modal label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+.modal-close { position: absolute; top: 10px; right: 12px; border: 0; background: transparent; color: var(--muted); font-size: 22px; cursor: pointer; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .subarea-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .subarea-list a { border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; }
 .task-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; overflow-x: auto; }
@@ -209,6 +247,14 @@ summary { cursor: pointer; color: var(--muted); }
   .content { padding: 18px 12px; max-width: none; }
   .editor-wrap { display: block; }
   .editor-side { width: auto; }
+  .workspace-shell { display: block; }
+  .area-sidebar { border-right: 0; border-bottom: 1px solid var(--border); padding: 0 0 10px; margin-bottom: 16px; }
+  .area-tree { display: flex; gap: 4px; overflow-x: auto; }
+  .area-link { white-space: nowrap; }
+  .workspace-title-row { display: block; }
+  .view-switch { margin-top: 10px; }
+  .workspace-toolbar { align-items: flex-start; }
+  .workspace-toolbar .filters { display: grid; grid-template-columns: 1fr 1fr; }
   .task-board { grid-template-columns: repeat(4, minmax(170px, 1fr)); }
   .calendar th, .calendar td { padding: 3px; height: 72px; }
   .cal-item { font-size: 10px; }

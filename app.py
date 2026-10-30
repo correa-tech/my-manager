@@ -145,11 +145,12 @@ def area_detail(area_id):
     done = db.execute("SELECT COUNT(*) c FROM tasks WHERE area_id=? AND (stage='concluido' OR status='done')", (area_id,)).fetchone()["c"]
     children = db.execute("SELECT * FROM areas WHERE parent_id=? ORDER BY created_at", (area_id,)).fetchall()
     parent = db.execute("SELECT id, name FROM areas WHERE id=?", (area["parent_id"],)).fetchone() if area["parent_id"] else None
+    all_areas = db.execute("SELECT id, name, parent_id FROM areas ORDER BY parent_id IS NOT NULL, created_at").fetchall()
 
     return render_template("area_detalhe.html", area=area, tasks=tasks,
         today=today_str(), total=total, done=done,
         filters={"status": status, "stage": stage, "priority": priority, "sort": sort, "q": q},
-        children=children, parent=parent)
+        children=children, parent=parent, all_areas=all_areas)
 
 @app.route("/areas/<int:area_id>/edit", methods=["POST"])
 def area_edit(area_id):
